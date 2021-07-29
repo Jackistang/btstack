@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 BlueKitchen GmbH
+ * Copyright (C) 2014 BlueKitchen GmbH
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,47 +30,33 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * Please inquire about commercial licensing options at 
+ * Please inquire about commercial licensing options at
  * contact@bluekitchen-gmbh.com
  *
  */
 
 /*
- * btstack_run_loop_rtthread.h
- *
- * Functions relevant for BTstack rtthread port 
+ * Dump HCI trace on stdout
  */
 
-#ifndef BTSTACK_RUN_LOOP_RTTHREAD_H
-#define BTSTACK_RUN_LOOP_RTTHREAD_H
+#ifndef HCI_DUMP_RTTHREAD_STDOUT_H
+#define HCI_DUMP_RTTHREAD_STDOUT_H
 
-#include "btstack_config.h"
-#include "btstack_run_loop.h"
+#include "hci_dump.h"
 
 #if defined __cplusplus
 extern "C" {
 #endif
 
 /**
- * @brief Provide btstack_run_loop_rtthread instance for use with btstack_run_loop_init
+ * @brief Get HCI Dump RTTHREAD STDOUT Instance
+ * @return hci_dump_impl
  */
-const btstack_run_loop_t * btstack_run_loop_rtthread_get_instance(void);
-
-/*
- * @brief Execute code on BTstack run loop. Can be used to control BTstack from a different thread
- */
-void btstack_run_loop_rtthread_execute_code_on_main_thread(void (*fn)(void *arg), void * arg);
-
-/**
- * @brief Triggers processing of data sources from thread context. 
- * Has to be called after enabling a poll data source to wake-pup run loop.
- */
-void btstack_run_loop_rtthread_trigger(void);    
+const hci_dump_t * hci_dump_rtthread_stdout_get_instance(void);
 
 /* API_END */
 
 #if defined __cplusplus
 }
 #endif
-
-#endif // BTSTACK_RUN_LOOP_RTTHREAD_H
+#endif // HCI_DUMP_RTTHREAD_STDOUT_H

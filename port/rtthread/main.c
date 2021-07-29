@@ -63,7 +63,7 @@
 #include "hci.h"
 #include "hci_dump.h"
 // #include "hci_dump_posix_fs.h"
-#include "hci_dump_posix_stdout.h"
+#include "hci_dump_rtthread_stdout.h"
 #include "hci_transport.h"
 #include "hci_transport_h4.h"
 #include "hm_hci_transport_h4.h"
@@ -152,7 +152,7 @@ int rt_btstack_main(int argc, const char * argv[]){
     // hci_dump_init(hci_dump_impl);
     // printf("Packet Log: %s\n", pklg_path);
 
-    const hci_dump_t * hci_dump_impl = hci_dump_posix_stdout_get_instance();
+    const hci_dump_t * hci_dump_impl = hci_dump_rtthread_stdout_get_instance();
     hci_dump_init(hci_dump_impl);
 
     // pick serial port
