@@ -59,7 +59,7 @@ static void btstack_run_loop_rtthread_execute(void) {
         btstack_run_loop_base_poll_data_sources();
 
         // process registered function calls on run loop thread
-        whlie (1) {
+        while (1) {
             function_call_t message = { NULL, NULL };
             rt_err_t err = rt_mq_recv(btstack_run_loop_queue, &message, sizeof(message), RT_WAITING_NO);
             if (err != RT_EOK)  break;
@@ -82,7 +82,7 @@ static void btstack_run_loop_rtthread_execute(void) {
         
         log_debug("RL: wait with timeout %u", (int) timeout_ms);
 
-        rt_event_recv(btstack_run_loop_event_group, EVENT_GROUP_FLAG_RUN_LOOP, RT_EVENT_FLAG_CLEAR, timeout_ms, NULL);
+        rt_event_recv(btstack_run_loop_event_group, EVENT_GROUP_FLAG_RUN_LOOP, RT_EVENT_FLAG_CLEAR | RT_EVENT_FLAG_OR, timeout_ms, NULL);
     }
 }
 
