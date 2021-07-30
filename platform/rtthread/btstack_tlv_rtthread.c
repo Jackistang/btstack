@@ -59,7 +59,8 @@ static int btstack_tlv_rtthread_get_tag(void * context, uint32_t tag, uint8_t * 
 {
 	UNUSED(context);
 	
-	char key[EASYFLASH_KEY_SIZE];	/* tag: 0x12345678 - key: "0x12345678" */
+	// tag: 0x12345678 - key: "0x12345678"
+	char key[EASYFLASH_KEY_SIZE];
 	tag2key(tag, key);
 
 	uint32_t bytes_to_read = 0;
@@ -68,7 +69,12 @@ static int btstack_tlv_rtthread_get_tag(void * context, uint32_t tag, uint8_t * 
 		log_error("get tag %s fail", key);
 		return 0;
 	}
+
+	// return len if buffer = NULL
+	if (!buffer)
+		return bytes_to_read;
 	
+	// otherwise copy data into buffer
 	bytes_to_read = btstack_min(bytes_to_read, buffer_size);
 	ef_get_env_blob(key, buffer, bytes_to_read, NULL);
 
@@ -90,7 +96,8 @@ static int btstack_tlv_rtthread_store_tag(void * context, uint32_t tag, const ui
 {
 	UNUSED(context);
 
-	char key[EASYFLASH_KEY_SIZE];	/* tag: 0x12345678 - key: "0x12345678" */
+	// tag: 0x12345678 - key: "0x12345678"
+	char key[EASYFLASH_KEY_SIZE];
 	tag2key(tag, key);
 
 	EfErrCode err = ef_set_env_blob(key, data, data_size);
@@ -115,7 +122,8 @@ static void btstack_tlv_rtthread_delete_tag(void * context,  uint32_t tag)
 {
 	UNUSED(context);
 
-	char key[EASYFLASH_KEY_SIZE];	/* tag: 0x12345678 - key: "0x12345678" */
+	// tag: 0x12345678 - key: "0x12345678"
+	char key[EASYFLASH_KEY_SIZE];
 	tag2key(tag, key);
 
 	EfErrCode err = ef_del_env(key);
@@ -139,4 +147,9 @@ const btstack_tlv_t * btstack_tlv_rtthread_init_instance(btstack_tlv_rtthread_t 
 	UNUSED(self);
 
 	return &btstack_tlv_rtthread;
+}
+
+void btstack_tlv_rtthread_deinit(btstack_tlv_rtthread_t * self)
+{
+	UNUSED(self);
 }
