@@ -148,8 +148,3 @@ const btstack_tlv_t * btstack_tlv_rtthread_init_instance(btstack_tlv_rtthread_t 
 
 	return &btstack_tlv_rtthread;
 }
-
-void btstack_tlv_rtthread_deinit(btstack_tlv_rtthread_t * self)
-{
-	UNUSED(self);
-}

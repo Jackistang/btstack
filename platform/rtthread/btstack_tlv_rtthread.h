@@ -45,19 +45,15 @@
 extern "C" {
 #endif
 
-typedef void btstack_tlv_rtthread_t;
+typedef struct {
+
+} btstack_tlv_rtthread_t;
 
 /**
  * Init Tag Length Value Store
  * @param context btstack_tlv_rtthread_t 
  */
 const btstack_tlv_t * btstack_tlv_rtthread_init_instance(btstack_tlv_rtthread_t * context);
-
-/**
- * Free TLV entries
- * @param self
- */
-void btstack_tlv_rtthread_deinit(btstack_tlv_rtthread_t * self);
 
 #if defined __cplusplus
 }
