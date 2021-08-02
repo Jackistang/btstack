@@ -19,14 +19,20 @@ src += Split('''
 ''')
 inc += [ cwd + '/port/rtthread' ]
 
+src += Split('''
+    src/ble/le_device_db_memory.c
+''')
+# src += Split('''
+#     src/ble/le_device_db_tlv.c
+#     platform/rtthread/btstack_tlv_rtthread.c
+# ''')
+
 # Core
 src += Split('''
     platform/rtthread/btstack_run_loop_rtthread.c
     platform/rtthread/hci_dump_rtthread_stdout.c
     
     chipset/zephyr/btstack_chipset_zephyr.c
-
-    src/ble/le_device_db_memory.c
     
 	src/btstack_memory.c
 	src/btstack_linked_list.c

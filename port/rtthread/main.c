@@ -67,6 +67,9 @@
 #include "btstack_stdin.h"
 #include "btstack_chipset_zephyr.h"
 
+// #include "ble/le_device_db_tlv.h"
+// #include "btstack_tlv_rtthread.h"
+
 int btstack_main(int argc, const char * argv[]);
 const btstack_uart_t * btstack_uart_rtthread_instance(void);
 
@@ -77,6 +80,9 @@ static hci_transport_config_uart_t config = {
     1,  // flow control
     NULL,
 };
+
+// static const btstack_tlv_t * tlv_impl;
+// static btstack_tlv_rtthread_t *tlv_context;
 
 static btstack_packet_callback_registration_t hci_event_callback_registration;
 
@@ -91,6 +97,11 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
             printf("BTstack up and running as %s\n",  bd_addr_to_str(static_address));
 
             le_device_db_init();
+
+            // // setup TLV
+            // tlv_impl = btstack_tlv_rtthread_init_instance(&tlv_context);
+            // btstack_tlv_set_instance(tlv_impl, &tlv_context);
+            // le_device_db_tlv_configure(tlv_impl, &tlv_context);
 
             break;
         case HCI_EVENT_COMMAND_COMPLETE:
@@ -116,8 +127,8 @@ int rt_btstack_main(int argc, const char * argv[]){
 	btstack_memory_init();
     btstack_run_loop_init(btstack_run_loop_rtthread_get_instance());
 
-    // const hci_dump_t * hci_dump_impl = hci_dump_rtthread_stdout_get_instance();
-    // hci_dump_init(hci_dump_impl);
+    const hci_dump_t * hci_dump_impl = hci_dump_rtthread_stdout_get_instance();
+    hci_dump_init(hci_dump_impl);
 
     // pick serial port
     config.device_name = "uart1"; // PCA10056 nRF52840 
@@ -161,7 +172,7 @@ static void btstack_thread_entry(void *args)
 
 static int btstack_rtthread_port_init(void)
 {
-    rt_thread_t tid = rt_thread_create("btstack", btstack_thread_entry, NULL, 2048, 10, 10);
+    rt_thread_t tid = rt_thread_create("btstack", btstack_thread_entry, NULL, 2048, RT_THREAD_PRIORITY_MAX-1, 10);
     
     rt_thread_startup(tid);
     
