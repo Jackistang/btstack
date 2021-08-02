@@ -12,11 +12,12 @@ src += [
     # 'example/mesh_node_demo.c'
 ]
 
-# src += Split('''
-#     src/hci_transport_h4.c
-#     port/rtthread/main.c
-# ''')
-# inc += [ cwd + '/port/rtthread' ]
+src += Split('''
+    src/hci_transport_h4.c
+    platform/rtthread/btstack_uart_rtthread.c
+    port/rtthread/main.c
+''')
+inc += [ cwd + '/port/rtthread' ]
 
 # Core
 src += Split('''
