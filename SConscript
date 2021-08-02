@@ -8,29 +8,25 @@ src = []
 # Example
 src += [
     # 'example/gap_le_advertisements.c'
-    # 'example/gatt_counter.c'
-    'example/mesh_node_demo.c'
+    'example/gatt_counter.c'
+    # 'example/mesh_node_demo.c'
 ]
 
-#     platform/posix/btstack_uart_posix.c   not have a instance
-#     platform/posix/le_device_db_fs.c    complict with le_device_db_tlv.c
-#     src/hci_transport_h4.c    complict with hm component
-#     platform/posix/btstack_run_loop_posix.c   complict with btstack_run_loop_rtthread.c
-#     platform/posix/hci_dump_posix_stdout.c    
+# src += Split('''
+#     src/hci_transport_h4.c
+#     port/rtthread/main.c
+# ''')
+# inc += [ cwd + '/port/rtthread' ]
+
 # Core
 src += Split('''
     platform/rtthread/btstack_run_loop_rtthread.c
     platform/rtthread/hci_dump_rtthread_stdout.c
-
-    platform/posix/btstack_stdin_posix.c
-    platform/posix/btstack_tlv_posix.c
-    platform/posix/hci_dump_posix_fs.c
     
     chipset/zephyr/btstack_chipset_zephyr.c
 
-    port/rtthread/main.c
-
-    src/ble/le_device_db_tlv.c
+    src/ble/le_device_db_memory.c
+    
 	src/btstack_memory.c
 	src/btstack_linked_list.c
 	src/btstack_memory_pool.c
@@ -113,8 +109,6 @@ src += Split('''
 ''')
 
 inc += [
-    cwd + '/port/rtthread',
-    cwd + '/platform/posix',
     cwd + '/platform/rtthread',
     cwd + '/chipset/zephyr',
 

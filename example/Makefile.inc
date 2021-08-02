@@ -228,7 +228,6 @@ EXAMPLES_LE_ONLY=           		\
 	gatt_streamer_server    		\
 	hog_boot_host_demo      		\
 	hog_host_demo      		        \
-	hog_keyboard_demo       		\
 	hog_mouse_demo          		\
 	le_data_channel_client  		\
 	le_data_channel_server  		\
