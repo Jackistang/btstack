@@ -40,6 +40,7 @@
 #include <stdio.h>
 
 #include "btstack_debug.h"
+#include "btstack_util.h"
 
 #include "mesh/mesh_vendor_aligenie_server.h"
 #include "mesh/mesh_vendor_aligenie_model.h"
@@ -60,16 +61,19 @@ static void vendor_aligenie_server_send_message(uint16_t src, uint16_t dest, uin
     mesh_access_send_unacknowledged_pdu(pdu);
 }
 
-static mesh_vendor_aligenie_attr_t * vendor_aligenie_find_attr_by_type(mesh_vendor_aligenie_state_t * vendor_aligenie_state, uint16_t attr_type)
+static mesh_vendor_aligenie_attr_t * vendor_aligenie_find_attr_by_type(const mesh_vendor_aligenie_state_t * vendor_aligenie_state, const uint16_t attr_type)
 {
     // find attr item in table
     mesh_vendor_aligenie_attr_t * attr = vendor_aligenie_state->attrs;
-    if (attr == NULL)   return NULL;
+    btstack_assert(attr != NULL);
+
     for (; attr->attr_value != NULL; attr++) {
         if (attr->attr_type == attr_type)
-            return attr;
+            break;
     }
-    return NULL;
+
+    // If attribute type is not support, return end of entry {0, NULL, 0, ""}.
+    return attr;
 }
 
 static mesh_transition_t * vendor_aligenie_server_get_base_transition(mesh_model_t * mesh_model)
@@ -78,7 +82,46 @@ static mesh_transition_t * vendor_aligenie_server_get_base_transition(mesh_model
     return &vendor_aligenie_server_state->base_transition;
 }
 
-static void vendor_aligenie_handle_get_message(mesh_model_t *mesh_model, mesh_pdu_t *pdu)
+static void mesh_access_parser_aligenie_attr_value(mesh_access_parser_state_t * parser, mesh_vendor_aligenie_attr_t * attr)
+{
+    const char * format = attr->format;
+    uint8_t * attr_value = (uint8_t *)attr->attr_value;
+    uint16_t position = 0;
+
+    uint8_t  byte;
+    uint16_t word;
+    uint32_t longword;
+    while (*format) {
+        switch (*format) {
+            case '1':
+                byte = mesh_access_parser_get_uint8(parser);
+                attr_value[position] = byte;
+                position += 1;
+                break;
+            case '2':
+                word = mesh_access_parser_get_uint16(parser);
+                little_endian_store_16(attr_value, position, word);
+                position += 2;
+                break;
+            case '3':
+                longword = mesh_access_parser_get_uint24(parser);
+                little_endian_store_24(attr_value, position, longword);
+                position += 3;
+                break;
+            case '4':
+                longword = mesh_access_parser_get_uint32(parser);
+                little_endian_store_32(attr_value, position, longword);
+                position += 4;
+                break;
+            default:
+                btstack_assert(false);
+                break;
+        }
+        format++;
+    }
+}
+
+static void vendor_aligenie_handle_get_or_set_message(mesh_model_t *mesh_model, mesh_pdu_t *pdu, bool set)
 {
     btstack_assert(mesh_model != NULL);
     btstack_assert(mesh_model->model_data != NULL);
@@ -97,29 +140,86 @@ static void vendor_aligenie_handle_get_message(mesh_model_t *mesh_model, mesh_pd
             // ignore on retransmission
             break;
         default:
-            mesh_access_transitions_init_transaction(base_transition, tid, mesh_pdu_src(pdu), mesh_pdu_dst(pdu));
-
             while (mesh_access_parser_available(&parser) >= 2) {
                 uint16_t attr_type = mesh_access_parser_get_uint16(&parser);
                 mesh_vendor_aligenie_attr_t * attr = (mesh_vendor_aligenie_attr_t *)vendor_aligenie_find_attr_by_type(vendor_aligenie_server_state->attrs, attr_type);
 
-                if (attr != NULL) {
-                    attr->visited = 1;
-                } else {
-                    // TODO handle unsupported attr
+                if (attr->attr_value == NULL) {
+                    printf("Attribute type 0x%04x not supported\n", attr_type);
+                    mesh_vendor_aligenie_attr_report_error(vendor_aligenie_server_state, attr_type, VENDOR_ALIGENIE_ATTR_NOT_SUPPORT);
+
+                    break;
                 }
+
+                // Handle set message.
+                if (set) {
+                    if (mesh_access_parser_available(&parser) < attr->attr_value_length) {
+                        printf("Attribute type 0x%04x value length is error\n", attr_type);
+                        mesh_vendor_aligenie_attr_report_error(vendor_aligenie_server_state, attr_type, VENDOR_ALIGENIE_PARAMETER_ERROR);
+
+                        break;
+                    }
+
+                    mesh_access_parser_aligenie_attr_value(&parser, attr);
+                }
+
+                // Write attribute visited to ringbuffer, wait to send status message.
+                btstack_ring_buffer_write(&vendor_aligenie_server_state->attrs_visited, attr, sizeof(attr));
             }
 
-            // TODO support handle set message
-            // mesh_access_transition_setup(mesh_model, base_transition, 0, 0, &mesh_vendor_aligenie_server_transition_handler);
-            // mesh_access_state_changed(mesh_model);
+            mesh_access_transitions_init_transaction(base_transition, tid, mesh_pdu_src(pdu), mesh_pdu_dst(pdu));
+
+            mesh_access_transition_setup(mesh_model, base_transition, 0, 0, &mesh_vendor_aligenie_server_transition_handler);
+
+            // Trigger model publication.
+            if (set) {
+                mesh_access_state_changed(mesh_model);
+            }
+
             break;
+    }
+}
+
+static void mesh_access_message_add_aligenie_attr_value(mesh_upper_transport_builder_t * builder, mesh_vendor_aligenie_attr_t * attr)
+{
+    const char * format = attr->format;
+    uint8_t * attr_value = (uint8_t *)attr->attr_value;
+    uint16_t position = 0;
+
+    uint8_t  byte;
+    uint16_t word;
+    uint32_t longword;
+    while (*format) {
+        switch(*format) {
+            case '1':
+                byte = attr_value[position];
+                mesh_access_message_add_uint8(builder, byte);
+                position += 1;
+                break;
+            case '2':
+                word = little_endian_read_16(attr_value, position);
+                mesh_access_message_add_uint16(builder, word);
+                position += 2;
+                break;
+            case '3':
+                longword = little_endian_read_24(attr_value, position);
+                mesh_access_message_add_uint24(builder, longword);
+                position += 3;
+                break;
+            case '4':
+                longword = little_endian_read_32(attr_value, position);
+                mesh_access_message_add_uint32(builder, longword);
+                position += 4;
+                break;
+        }
+        format++;
     }
 }
 
 static mesh_pdu_t * mesh_vendor_aligenie_status_message(mesh_model_t *model)
 {
     static uint8_t status_tid = 0;
+    uint32_t dummy_read;
 
     mesh_upper_transport_builder_t builder;
     mesh_access_message_init(&builder, MESH_VENDOR_ALIGENIE_ATTR_STATUS);
@@ -127,35 +227,24 @@ static mesh_pdu_t * mesh_vendor_aligenie_status_message(mesh_model_t *model)
     mesh_access_message_add_uint8(&builder, status_tid++);
 
     mesh_vendor_aligenie_state_t * state = (mesh_vendor_aligenie_state_t *)model->model_data;
-    mesh_vendor_aligenie_attr_t * attr = state->attrs;
-    if (attr == NULL)
-        btstack_assert(0);
+    mesh_vendor_aligenie_attr_t * attrs = state->attrs;
+    btstack_assert(attrs != NULL);
     
-    for (; attr->attr_value != NULL; attr++) {
-        if (!attr->visited)
-            continue;
-        
+    mesh_vendor_aligenie_attr_t * attr;
+    while (!btstack_ring_buffer_empty(&state->attrs_visited)) {
+        btstack_ring_buffer_read(&state->attrs_visited, &attr, sizeof(attr), &dummy_read);
+
         mesh_access_message_add_uint16(&builder, attr->attr_type);
+        mesh_access_message_add_aligenie_attr_value(&builder, attr);
+    }
 
-        switch (attr->attr_value_length) {
-            case 1:
-                mesh_access_message_add_uint8(&builder, *(uint8_t *)attr->attr_value);
-                break;
-            case 2:
-                mesh_access_message_add_uint16(&builder, *(uint16_t *)attr->attr_value);
-                break;
-            case 3:
-                mesh_access_message_add_uint24(&builder, *(uint32_t *)attr->attr_value);
-                break;
-            case 4:
-                mesh_access_message_add_uint32(&builder, *(uint32_t *)attr->attr_value);
-                break;
-            default:
-                log_error("message length %d is not supported", attr->attr_value_length);
-                break;
-        }
+    aligenie_attr_visited_error_t error;
+    while (!btstack_ring_buffer_empty(&state->state_errors)) {
+        btstack_ring_buffer_read(&state->state_errors, &error, sizeof(error), &dummy_read);
 
-        attr->visited = 0;
+        mesh_access_message_add_uint16(&builder, ALIGENIE_ERROR_CODE);
+        mesh_access_message_add_uint16(&builder, error.attr_type);
+        mesh_access_message_add_uint8(&builder, error.error_code);
     }
 
     return (mesh_pdu_t *) mesh_access_message_finalize(&builder);
@@ -168,7 +257,7 @@ static mesh_pdu_t * mesh_vendor_aligenie_status_message(mesh_model_t *model)
 static void vendor_aligenie_attr_get_handler(struct mesh_model * vendor_aligenie_server_model, mesh_pdu_t * pdu)
 {
     // 1 TID，N Attr Type (2 bytes every)
-    vendor_aligenie_handle_get_message(vendor_aligenie_server_model, pdu);
+    vendor_aligenie_handle_get_or_set_message(vendor_aligenie_server_model, pdu, false);
     
     mesh_upper_transport_pdu_t * transport_pdu = (mesh_upper_transport_pdu_t *)mesh_vendor_aligenie_status_message(vendor_aligenie_server_model);
     if (transport_pdu) {
@@ -180,12 +269,20 @@ static void vendor_aligenie_attr_get_handler(struct mesh_model * vendor_aligenie
 
 static void vendor_aligenie_attr_set_handler(struct mesh_model * vendor_aligenie_server_model, mesh_pdu_t * pdu)
 {
-    
+    vendor_aligenie_handle_get_or_set_message(vendor_aligenie_server_model, pdu, true);
+
+    mesh_upper_transport_pdu_t * transport_pdu = (mesh_upper_transport_pdu_t *)mesh_vendor_aligenie_status_message(vendor_aligenie_server_model);
+    if (transport_pdu) {
+        vendor_aligenie_server_send_message(mesh_access_get_element_address(vendor_aligenie_server_model), mesh_pdu_src(pdu), mesh_pdu_netkey_index(pdu), mesh_pdu_appkey_index(pdu), (mesh_pdu_t *) transport_pdu);
+    }
+
+    mesh_access_message_processed(pdu);
 }
 
 static void vendor_aligenie_attr_set_unacknowledged_handler(struct mesh_model * vendor_aligenie_server_model, mesh_pdu_t * pdu)
 {
-    
+    vendor_aligenie_handle_get_or_set_message(vendor_aligenie_server_model, pdu, true);
+     mesh_access_message_processed(pdu);
 }
 
 static void vendor_aligenie_attr_confirmation_handler(struct mesh_model * vendor_aligenie_server_model, mesh_pdu_t * pdu)

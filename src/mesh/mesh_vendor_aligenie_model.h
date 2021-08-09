@@ -39,6 +39,7 @@
 #define __MESH_VENDOR_ALIGENIE_NODEL_H
 
 #include "btstack_linked_list.h"
+#include "btstack_ring_buffer.h"
 #include "mesh/mesh_access.h"
 
 #ifdef __cplusplus
@@ -58,6 +59,7 @@ extern "C"
 
 
 /* Attr type */
+#define ALIGENIE_ERROR_CODE                     0x0000u
 #define ALIGENIE_ATTR_COLOR                     0x0123u
 #define ALIGENIE_ATTR_ONOFF                     0x0100u
 #define ALIGENIE_ATTR_LIGHTNESS_LEVEL           0x0121u
@@ -77,29 +79,55 @@ static mesh_model_t vendor_aligenie_server_model;
 
 mesh_vendor_aligenie_attr_t attr_array[] =
 {
-    {ALIGENIE_ATTR_ONOFF,           &vendor_onoff,           1},
-    {ALIGENIE_ATTR_COLOR,           &vendor_color[0],        3},
-    {ALIGENIE_ATTR_LIGHTNESS_LEVEL, &vendor_lightness_level, 2},
-    {0, NULL, 0}
+    {ALIGENIE_ATTR_ONOFF,           &vendor_onoff,           1,     "1"     },
+    {ALIGENIE_ATTR_COLOR,           &vendor_color[0],        6,     "222"   },
+    {ALIGENIE_ATTR_LIGHTNESS_LEVEL, &vendor_lightness_level, 2,     "2"     },
+    {0, NULL, 0, ""}
 };
 
 mesh_vendor_aligenie_server_register_attrs(&attr_array[0]);
 
 */
 
-typedef struct {
-    uint16_t  attr_type;
-    void *    attr_value;
-    uint8_t   attr_value_length;
+enum {
+    VENDOR_ALIGENIE_DEVICE_NOT_READY   = 0x80,
+    VENDOR_ALIGENIE_ATTR_NOT_SUPPORT   = 0x81,
+    VENDOR_ALIGENIE_OPCODE_NOT_SUPPORT = 0x82,
+    VENDOR_ALIGENIE_PARAMETER_ERROR    = 0x83,
+    VENDOR_ALIGENIE_DEVICE_STATE_ERROR = 0x84,
+    VENDOR_ALIGENIE_NOT_FIND_INDEX     = 0x85,
+    VENDOR_ALIGENIE_STORAGE_FULL       = 0x86,
+    VENDOR_ALIGENIE_FORMAT_ERROR       = 0x87,
+};
 
-    uint8_t   visited;  // used inner
+typedef struct {
+    const uint16_t  attr_type;
+    void  *         attr_value;
+    const uint8_t   attr_value_length;
+    const char *    format;
 } mesh_vendor_aligenie_attr_t;
+
+typedef struct aligenie_attr_visited_error {
+    uint8_t     error_code;
+    uint16_t    attr_type;
+} aligenie_attr_visited_error_t;
 
 typedef struct {
     mesh_transition_t base_transition;
 
+    btstack_ring_buffer_t attrs_visited;
+    btstack_ring_buffer_t state_errors;
     mesh_vendor_aligenie_attr_t *attrs;
 } mesh_vendor_aligenie_state_t;
+
+static inline mesh_vendor_aligenie_attr_report_error(mesh_vendor_aligenie_state_t * state, uint16_t attr_type, uint8_t error_code)
+{
+    aligenie_attr_visited_error_t error = {
+        .attr_type = attr_type,
+        .error_code = error_code
+    };
+    btstack_ring_buffer_write(&state->state_errors, &error, sizeof(error));
+}
 
 #ifdef __cplusplus
 } /* end of extern "C" */
