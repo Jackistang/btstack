@@ -69,6 +69,15 @@ extern "C"
 #define ALIGENIE_ATTR_MODE_NUMBER               0xF004u
 #define ALIGENIE_ATTR_EVENT                     0xF009u
 
+/**
+ * @format 11414
+ * @param subevent_code
+ * @param element_index
+ * @param model_identifier
+ * @param reason
+ * @param attr_point
+ */
+#define MESH_SUBEVENT_VENDOR_ALIGENIE       0xFF
 
 /*
 static uint8_t  vendor_onoff;
@@ -127,6 +136,26 @@ static inline mesh_vendor_aligenie_attr_report_error(mesh_vendor_aligenie_state_
         .error_code = error_code
     };
     btstack_ring_buffer_write(&state->state_errors, &error, sizeof(error));
+}
+
+static inline mesh_subevent_vendor_aligenie_get_element_index(const uint8_t * event)
+{
+    return event[3];
+}
+
+static inline mesh_subevent_vendor_aligenie_get_model_identifier(const uint8_t * event)
+{
+    return little_endian_read_32(event, 4);
+}
+
+static inline mesh_subevent_vendor_aligenie_get_reason(const uint8_t * event)
+{
+    return event[8];
+}
+
+static inline mesh_subevent_vendor_aligenie_get_attr_pointer(const uint8_t * event)
+{
+    return little_endian_read_32(event, 9);
 }
 
 #ifdef __cplusplus

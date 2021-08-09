@@ -48,10 +48,52 @@
 #include "mesh/mesh_foundation.h"
 #include "mesh/mesh_access.h"
 
+static void mesh_access_emit_state_update_aligenie(mesh_model_t * model, model_state_update_reason_t reason)
+{
+    btstack_assert(model != NULL);
+
+    if (model->model_packet_handler == NULL) 
+        return ;
+
+    mesh_vendor_aligenie_state_t * state = (mesh_vendor_aligenie_state_t *)model->model_data;
+    uint8_t event[12] = {HCI_EVENT_MESH_META, 10, MESH_SUBEVENT_VENDOR_ALIGENIE};
+    uint32_t bytes_available = btstack_ring_buffer_bytes_available(&state->attrs_visited);
+    uint32_t bytes_read = 0;
+    uint32_t dummy_read;
+    mesh_vendor_aligenie_attr_t * attr;
+
+    while (bytes_read < bytes_available) {
+        // Get attr from ringbuffer, and then put it in again.
+        btstack_ring_buffer_read(&state->attrs_visited, &attr, sizeof(attr), &dummy_read);
+        bytes_read += dummy_read;
+        btstack_ring_buffer_write(&state->attrs_visited, &attr, sizeof(attr));
+
+        uint8_t pos = 3;
+        event[pos++] = mesh_access_get_element_index(model);
+        little_endian_store_32(event, pos, model->model_identifier);
+        pos += 4;
+        event[pos++] = (uint8_t)reason;
+        little_endian_store_32(event, pos, attr);
+        pos += 4;
+        (*model->model_packet_handler)(HCI_EVENT_PACKET, 0, event, sizeof(event));
+    }
+}
 
 static void mesh_vendor_aligenie_server_transition_handler(mesh_transition_t * base_transition, model_state_update_reason_t event)
 {
+    mesh_vendor_aligenie_state_t * state = (mesh_vendor_aligenie_state_t*) base_transition;
+    switch (event) {
+        case MODEL_STATE_UPDATE_REASON_SET:
+            mesh_access_state_changed(state->base_transition.mesh_model);
+            break;
+        default:
+            btstack_assert(false);
+            break;
+    }
 
+    // notify app
+    mesh_model_t * model = state->base_transition.mesh_model;
+    mesh_access_emit_state_update_aligenie(model, event);
 }
 
 static void vendor_aligenie_server_send_message(uint16_t src, uint16_t dest, uint16_t netkey_index, uint16_t appkey_index, mesh_pdu_t *pdu)
@@ -164,15 +206,13 @@ static void vendor_aligenie_handle_get_or_set_message(mesh_model_t *mesh_model, 
                 }
 
                 // Write attribute visited to ringbuffer, wait to send status message.
-                btstack_ring_buffer_write(&vendor_aligenie_server_state->attrs_visited, attr, sizeof(attr));
+                btstack_ring_buffer_write(&vendor_aligenie_server_state->attrs_visited, &attr, sizeof(attr));
             }
 
             mesh_access_transitions_init_transaction(base_transition, tid, mesh_pdu_src(pdu), mesh_pdu_dst(pdu));
 
-            mesh_access_transition_setup(mesh_model, base_transition, 0, 0, &mesh_vendor_aligenie_server_transition_handler);
-
-            // Trigger model publication.
             if (set) {
+                mesh_access_transition_setup(mesh_model, base_transition, 0, 0, &mesh_vendor_aligenie_server_transition_handler);
                 mesh_access_state_changed(mesh_model);
             }
 
