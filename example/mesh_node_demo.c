@@ -48,6 +48,7 @@
 
 #include "btstack.h"
 #include "mesh_node_demo.h"
+#include "mesh_node_demo1.h"
 
 const char * device_uuid_string = "001BDC0810210B0E0A0C000B0E0A0C00";
 
@@ -116,6 +117,8 @@ static void mesh_provisioning_message_handler (uint8_t packet_type, uint16_t cha
                     break;
                 case MESH_SUBEVENT_PB_PROV_COMPLETE:
                     printf("Provisioning complete\n");
+                    att_server_init(profile_data, &att_read_callback, NULL);
+                    gatt_bearer_init();
                     break;
                 default:
                     break;
@@ -228,7 +231,7 @@ int btstack_main(void)
     le_device_db_init();
 
     // setup ATT server
-    att_server_init(profile_data, &att_read_callback, NULL);    
+    att_server_init(profile_data_provisioning, &att_read_callback, NULL);    
 
     // 
     sm_init();

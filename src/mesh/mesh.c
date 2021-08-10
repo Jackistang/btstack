@@ -1220,10 +1220,10 @@ void mesh_init(void){
     // ADV Bearer also used for GATT Proxy Advertisements and PB-GATT
     adv_bearer_init();
 
-#ifdef ENABLE_MESH_GATT_BEARER
-    // Setup GATT bearer
-    gatt_bearer_init();
-#endif
+// #ifdef ENABLE_MESH_GATT_BEARER
+//     // Setup GATT bearer
+//     gatt_bearer_init();
+// #endif
 
 #ifdef ENABLE_MESH_ADV_BEARER
     // Setup Unprovisioned Device Beacon
