@@ -12,12 +12,12 @@ src += [
     # 'example/mesh_node_demo.c'
 ]
 
-src += Split('''
-    src/hci_transport_h4.c
-    platform/rtthread/btstack_uart_rtthread.c
-    port/rtthread/main.c
-''')
-inc += [ cwd + '/port/rtthread' ]
+# src += Split('''
+#     src/hci_transport_h4.c
+#     platform/rtthread/btstack_uart_rtthread.c
+#     port/rtthread/main.c
+# ''')
+# inc += [ cwd + '/port/rtthread' ]
 
 src += Split('''
     src/ble/le_device_db_memory.c
@@ -27,12 +27,11 @@ src += Split('''
 #     platform/rtthread/btstack_tlv_rtthread.c
 # ''')
 
+#     chipset/zephyr/btstack_chipset_zephyr.c
 # Core
 src += Split('''
     platform/rtthread/btstack_run_loop_rtthread.c
     platform/rtthread/hci_dump_rtthread_stdout.c
-    
-    chipset/zephyr/btstack_chipset_zephyr.c
     
 	src/btstack_memory.c
 	src/btstack_linked_list.c
